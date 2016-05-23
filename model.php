@@ -59,14 +59,19 @@
 			$collection = $this->connect->notes;
 			$myUser=array('id_autor'=>$userId);
 			$cursor = $collection->find($myUser);
+			$cursor->sort(array('time' => 1));
 			return $cursor;
 		}
 		
 		public function updateNotice($id,$title,$text,$color){
 			$collection = $this->connect->notes;
 			$time=time();
-			$add=array('$set'=>array( 'title'=>$title, 'text'=>$text, 'color'=>$color ,'time'=>$time));
-			$collection->update(array('_id'=>$id),$add);
+			
+			
+			$mongoID = new MongoID($id);
+			$userID=$collection->findOne(array('_id'=>$mongoID), array('id_autor'));
+		$collection->update(['_id'=>$mongoID],['title'=>$title, 'text'=>$text, 'id_autor'=>$userID['id_autor'], 'color'=>$color ,'time'=>$time],array("upsert" => true));
+			
 		}
 		
 		public function delNotice($id){
@@ -85,9 +90,7 @@
 	
 	class Login{
 		public static function startLogin($login,$password){
-			/*if(!isset($_SESSION)){
-				//session_start(['cookie_lifetime' => 86400,]);
-			}*/			
+				
 			$_SESSION['login'] = $login;
 			$password=md5($password);
 			$_SESSION['password'] = $password;
@@ -95,9 +98,9 @@
 		
 		public static function isLogin(){
 			
-			//session_start();
+			
 			if(isset($_SESSION['login'])&&isset($_SESSION['password'])){
-				//session_start();
+				
 				$login=$_SESSION['login'];
 				$password=$_SESSION['password'];
 				
@@ -109,62 +112,49 @@
 				}
 				else{
 					session_unset();
-					//session_destroy();
+					
 					return false;
 				}
 			}
 			else{
 				session_unset();
-				//session_destroy();
+				
 				return false;
 			}
 		}
 		
 		public static function logOut(){
 
-			//session_start();
+			
 			session_unset();
-			//session_destroy();			
+						
 		}
 	}
 	
 	class Notes{
 		public function createNote(){
 			$login=$_SESSION['login'];
-			$c="<form id='newNote' action='' method='post'>";
-			$c=$c."<input name='title' type='text'>";
-			$c=$c."<input name='text' type='textarea'>";
-			$c=$c."<input name='color' type='color'>";
-			$c=$c."<input type='button' name='submit' value='Create' onclick=\"sendNote('$login')\">";
+			$c="<form class='form-inline' id='newNote' action='' method='post'>";
+			$c=$c."<div class='control-group'><label class='control-label' >Topic: </label><div class='controls'>";
+			$c=$c."<input id='createTopic' name='title' type='text'>";
+			$c=$c."</div></div><div class='control-group'><label class='control-label' >Text: </label><div class='controls'>";
+			$c=$c."<textarea id='createText' name='text'></textarea>"; //"<input name='text' type='textarea'>";
+			$c=$c."</div></div><div class='control-group'><label class='control-label' >Background color: </label><div class='controls'>";
+			$c=$c."<input id='createColor' name='color' value='#00ffff' type='color'>";
+			$c=$c."</div></div>";
+			$c=$c."<input id='create' type='button' class='btn control-group' name='submit' value='Create' onclick=\"sendNote('$login')\">";			
 			$c=$c."</form>";
 			
 			echo $c;
 		}
 		
-		/*public function catchNotePOST(){
-			if($_POST['title']=='3'){
-				var_dump($_POST['title']);
-			}
-			if(isset($_POST['title'])&&!empty($_POST['title'])){//&&empty($_GET['new'])
-				$title=$_POST['title'];
-				$text=$_POST['text'];
-				$color=$_POST['color'];
-				$login=$_SESSION['login'];
-				//$_POST['title']='';
-				$db=new DataBase();
-				$userId=$db->loginToId($login);
-				$db->setNotice($title,$text,$userId,$color);
-				//$_POST['tit']=1;
-				//header("Location: index.php?new=1");
-				
-			}
-		}*/
 		
 		public function showNote($id,$title,$text,$color,$time){
-			$c="<div class='note' id=\"$id\" style='background-color: ".$color."'>";
-			$c=$c."<button onclick='updateNote(\"$id\")'>Change</button>";
-			$c=$c."<button onclick='deleteNote(\"$id\")'>Delete</button>";
-			$c=$c."<div class='title'>$title</div>";
+			$c="<div class='note col-xs-3 col-xs-offset-1 col-xs-pull-1' id=\"$id\" style='background-color: ".$color."'>";
+			$c=$c."<div class='btn-group '>";
+			$c=$c."<button class='btn btn-default change' onclick='updateNote(\"$id\")'>Change</button>";
+			$c=$c."<button class='btn btn-default' onclick='deleteNote(\"$id\")'>Delete</button></div><hr>";
+			$c=$c."<div class='title'><b>$title</b></div><hr>";
 			$c=$c."<div class='text'>$text</div>";
 			$c=$c."<div class='time'>$time</div>";
 			$c=$c."</div>";
@@ -177,5 +167,6 @@
 				$this->showNote($value['_id'],$value['title'],$value['text'],$value['color'],$time);
 			}
 		}
+		
 	}
 ?>
